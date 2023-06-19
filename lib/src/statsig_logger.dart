@@ -44,9 +44,9 @@ class StatsigLogger {
     }
 
     var events = _queue;
-    _queue = [];
     var success = await _network.sendEvents(events);
     if (success) {
+      _queue = [];
       return;
     }
 

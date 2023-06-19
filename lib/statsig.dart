@@ -26,11 +26,12 @@ class Statsig {
   /// Closes out the SDK flushing any pending events.
   static Future shutdown() async {
     await _clientInstance?.shutdown();
-    _clientInstance = null;
+    // _clientInstance = null;
   }
 
   /// Informs the SDK that the user has changed and that values should be refetched from Statsig.
   static Future updateUser(StatsigUser user) async {
+    print('\n\nSDK update user called ...\n\n');
     await _clientInstance?.updateUser(user);
   }
 

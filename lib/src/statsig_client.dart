@@ -13,7 +13,7 @@ import 'dynamic_config.dart';
 
 extension NormalizedStatsigUser on StatsigUser {
   StatsigUser normalize(StatsigOptions? options) {
-    var json = this.toJsonWithPrivateAttributes();
+    var json = toJsonWithPrivateAttributes();
     if (options != null) {
       json = json..addAll(options.environment?.toJson() ?? {});
     }
@@ -53,8 +53,8 @@ class StatsigClient {
   }
 
   Future updateUser(StatsigUser user) async {
-    await _store.clear();
-    _user = user.normalize(this._options);
+    // await _store.clear();
+    _user = user.normalize(_options);
     StatsigMetadata.regenSessionID();
 
     await _fetchInitialValues();
@@ -123,6 +123,15 @@ class StatsigClient {
   }
 
   Future<void> _fetchInitialValues() async {
+    var res = await _network.initialize(_user);
+    if (res is Map) {
+      _store.save(_user, res);
+    } else {
+      await _store.load(_user);
+    }
+  }
+
+  Future<void> log() async {
     var res = await _network.initialize(_user);
     if (res is Map) {
       _store.save(_user, res);

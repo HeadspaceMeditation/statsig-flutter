@@ -1,4 +1,3 @@
-import './statsig_options.dart';
 
 class StatsigUser {
   /// A unique identifier for the user.

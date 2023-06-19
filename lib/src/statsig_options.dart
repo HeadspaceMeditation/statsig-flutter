@@ -23,7 +23,7 @@ enum StatsigEnvironment {
 extension ToJson on StatsigEnvironment {
   Map<String, dynamic> toJson() => <String, dynamic>{
         "statsigEnvironment": <String, String>{
-          "tier": this.toString().replaceAll("StatsigEnvironment.", "")
+          "tier": toString().replaceAll("StatsigEnvironment.", "")
         }
       };
 }
