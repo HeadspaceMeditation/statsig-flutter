@@ -19,19 +19,19 @@ class Statsig {
   /// Optionally provide [StatsigUser] and/or [StatsigOptions] to configure the SDK.
   static Future<void> initialize(String sdkKey,
       [StatsigUser? user, StatsigOptions? options]) async {
-    _clientInstance =
-        await StatsigClient.make(sdkKey, user, options ?? StatsigOptions());
+    _clientInstance = await StatsigClient.make(
+      sdkKey, user,
+      options ?? StatsigOptions(),
+    );
   }
 
   /// Closes out the SDK flushing any pending events.
-  static Future shutdown() async {
+  static Future<void> shutdown() async {
     await _clientInstance?.shutdown();
-    // _clientInstance = null;
   }
 
   /// Informs the SDK that the user has changed and that values should be refetched from Statsig.
-  static Future updateUser(StatsigUser user) async {
-    print('\n\nSDK update user called ...\n\n');
+  static Future<void> updateUser(StatsigUser user) async {
     await _clientInstance?.updateUser(user);
   }
 

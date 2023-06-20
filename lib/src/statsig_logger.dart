@@ -12,15 +12,20 @@ const failedEventsFilename = "failed_events.json";
 
 class StatsigLogger {
   final NetworkService _network;
-  List<StatsigEvent> _queue = [];
+  final List<StatsigEvent> _queue = [];
   int _flushBatchSize = 50;
 
   late Timer _flushTimer;
 
+  Timer get flushTimer => _flushTimer;
+
   StatsigLogger(this._network) {
     _loadFailedLogs();
-    _flushTimer =
-        Timer.periodic(Duration(milliseconds: loggingIntervalMillis), (_) {
+    _initUpFlushTimer();
+  }
+
+  void _initUpFlushTimer() {
+    _flushTimer = Timer.periodic(Duration(milliseconds: loggingIntervalMillis), (_) {
       _flush();
     });
   }
@@ -33,47 +38,56 @@ class StatsigLogger {
     }
   }
 
-  Future shutdown() async {
+  Future<void> shutdown() async {
     _flushTimer.cancel();
     await _flush(true);
   }
 
-  Future _flush([bool isShuttingDown = false]) async {
+  void resume() {
+    _initUpFlushTimer();
+  }
+
+  Future<void> _flush([bool isShuttingDown = false]) async {
     if (_queue.isEmpty) {
       return;
     }
 
-    var events = _queue;
+    /// Copy logged events
+    List<StatsigEvent> events = List.from(_queue);
+    /// Clear current queue
+    _queue.clear();
     var success = await _network.sendEvents(events);
     if (success) {
-      _queue = [];
       return;
     }
 
     if (isShuttingDown) {
+      /// Add any event that came after we have attempted to send events to the server
+      events.addAll(_queue);
       await DiskUtil.write(failedEventsFilename, json.encode(events));
     } else {
       _flushBatchSize = min(_flushBatchSize * 2, maxQueueLength);
-      _queue += events;
+      _queue.addAll(events);
     }
   }
 
-  Future _loadFailedLogs() async {
-    var contents =
-        await DiskUtil.read(failedEventsFilename, destroyAfterReading: true);
-    if (!contents.startsWith("[") || !contents.endsWith("]")) {
-      return;
-    }
+  Future<void> _loadFailedLogs() async {
+    try {
+      var contents = await DiskUtil.read(
+        failedEventsFilename,
+        destroyAfterReading: true,
+      );
 
-    var events = json.decode(contents);
-    if (events is List) {
+      var events = json.decode(contents) as List;
       for (var element in events) {
         _queue.add(StatsigEvent.fromJson(element));
       }
-    }
 
-    if (_queue.isNotEmpty) {
-      _flush();
+      if (_queue.isNotEmpty) {
+        _flush();
+      }
+    } catch(e) {
+      return;
     }
   }
 }

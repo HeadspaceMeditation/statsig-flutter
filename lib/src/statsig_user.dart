@@ -79,4 +79,18 @@ class StatsigUser {
           : {})
     };
   }
+
+  StatsigUser copyWith(StatsigUser newRecord) {
+    return StatsigUser(
+      userId: newRecord.userId.isNotEmpty ? newRecord.userId : userId,
+      email: newRecord.email ?? email,
+      ip: newRecord.ip ?? ip,
+      country: newRecord.country ?? country,
+      locale: newRecord.locale ?? locale,
+      appVersion: newRecord.appVersion ?? appVersion,
+      custom: newRecord.custom ?? custom,
+      customIds: newRecord.customIds ?? customIds,
+      privateAttributes: newRecord.privateAttributes ?? privateAttributes,
+    );
+  }
 }

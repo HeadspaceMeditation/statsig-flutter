@@ -1,5 +1,6 @@
 import 'dart:convert';
 import "package:crypto/crypto.dart";
+import 'package:meta/meta.dart';
 
 import 'internal_store.dart';
 import 'network_service.dart';
@@ -48,13 +49,22 @@ class StatsigClient {
     return client;
   }
 
-  Future shutdown() async {
+  Future<void> shutdown() async {
     await _logger.shutdown();
   }
 
-  Future updateUser(StatsigUser user) async {
-    // await _store.clear();
-    _user = user.normalize(_options);
+  @visibleForTesting
+  void maybeResumeEventSync() {
+    if (_logger.flushTimer.isActive) {
+      return;
+    }
+    _logger.resume();
+  }
+
+  Future<void> updateUser(StatsigUser user) async {
+    maybeResumeEventSync();
+
+    _user = _user.copyWith(user).normalize(_options);
     StatsigMetadata.regenSessionID();
 
     await _fetchInitialValues();
