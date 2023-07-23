@@ -2,92 +2,122 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 
-import 'disk_util.dart';
+import 'package:simple_logger/simple_logger.dart';
+import 'package:statsig/src/common/service_locator.dart';
+import 'package:statsig/src/disk_storage/hive_store.dart';
+
 import 'network_service.dart';
 import 'statsig_event.dart';
 
 const maxQueueLength = 1000;
-const loggingIntervalMillis = 10000;
-const failedEventsFilename = "failed_events.json";
+const loggingIntervalInSecs = 10;
+const pendingEventsFileName = "failed_events.json";
 
 class StatsigLogger {
-  final NetworkService _network;
-  final List<StatsigEvent> _queue = [];
-  int _flushBatchSize = 50;
+  final SimpleLogger log = SimpleLogger();
 
+  final NetworkService _network;
+  List<StatsigEvent> _queue = [];
+  int _flushBatchSize = 50;
   late Timer _flushTimer;
+  late final HiveStore _diskStore;
 
   Timer get flushTimer => _flushTimer;
 
   StatsigLogger(this._network) {
-    _loadFailedLogs();
-    _initUpFlushTimer();
+    _diskStore = serviceLocator.get<HiveStore>();
+    _flushFailedLogs();
+    _initFlushTimer();
   }
 
-  void _initUpFlushTimer() {
-    _flushTimer = Timer.periodic(Duration(milliseconds: loggingIntervalMillis), (_) {
+  void _initFlushTimer() {
+    _flushTimer = Timer.periodic(Duration(seconds: loggingIntervalInSecs), (_) {
       _flush();
     });
   }
 
-  void enqueue(StatsigEvent event) {
+  Future<void> enqueue(StatsigEvent event) async {
     _queue.add(event);
+    await cacheEvent(event);
+
+    log.info('[Statsig] New event queued 🎉 Name: ${event.eventName}, Queue count: ${_queue.length}');
 
     if (_queue.length >= _flushBatchSize) {
       _flush();
     }
   }
 
+  Future<void> cacheEvent(StatsigEvent event) async {
+    try {
+      await _diskStore.logEvent(event);
+    } catch (e) {
+      log.severe('[Statsig] Error while caching event 😞: ${e.toString()}');
+    }
+  }
+
   Future<void> shutdown() async {
     _flushTimer.cancel();
-    await _flush(true);
+    log.info('[Statsig] Flush timer paused 💡');
+    await _flush();
   }
 
   void resume() {
-    _initUpFlushTimer();
+    _initFlushTimer();
+
+    log.info('[Statsig] Flush timer resumed 💡');
   }
 
-  Future<void> _flush([bool isShuttingDown = false]) async {
+  Future<void> _flush() async {
     if (_queue.isEmpty) {
       return;
     }
 
     /// Copy logged events
     List<StatsigEvent> events = List.from(_queue);
+
     /// Clear current queue
     _queue.clear();
-    var success = await _network.sendEvents(events);
+    bool success = await _network.sendEvents(events);
     if (success) {
+      log.info('[Statsig] Events uploaded successfully 🚀. Queue count: ${_queue.length}');
+      await _diskStore.clearSyncedEvents();
+
+      /// Store any event that came after we have attempted
+      /// to send events to the server
+      if (_queue.isNotEmpty) {
+        for (var event in _queue) {
+          await cacheEvent(event);
+        }
+      }
       return;
     }
 
-    if (isShuttingDown) {
-      /// Add any event that came after we have attempted to send events to the server
-      events.addAll(_queue);
-      await DiskUtil.write(failedEventsFilename, json.encode(events));
-    } else {
-      _flushBatchSize = min(_flushBatchSize * 2, maxQueueLength);
-      _queue.addAll(events);
-    }
+    _queue = [...events, ..._queue];
+    _flushBatchSize = min((_flushBatchSize * 1.2).toInt(), maxQueueLength);
+
+    log.info('[Statsig] Failed to upload events 😞. Batch count: ${events.length}, '
+        'Queue count: ${_queue.length}, New Flush batch size: $_flushBatchSize');
   }
 
-  Future<void> _loadFailedLogs() async {
+  Future<void> _flushFailedLogs() async {
     try {
-      var contents = await DiskUtil.read(
-        failedEventsFilename,
-        destroyAfterReading: true,
-      );
+      var events = _diskStore.loadEvents();
+      log.info('[Statsig] Attempting to flush past events 💡, '
+          'Event count: ${events.length}');
 
-      var events = json.decode(contents) as List;
-      for (var element in events) {
-        _queue.add(StatsigEvent.fromJson(element));
+
+      for (String event in events) {
+        try {
+          Map<String, dynamic> data = jsonDecode(event);
+          _queue.add(StatsigEvent.fromJson(data));
+        } catch (e) {
+          log.severe('[Statsig] Failed to decode event 😞 error: ${e.toString()}');
+        }
       }
 
-      if (_queue.isNotEmpty) {
-        _flush();
-      }
+      await _flush();
     } catch(e) {
-      return;
+      log.severe('[Statsig] Failed to flush failed events 😞 error: ${e.toString()}');
     }
   }
 }

@@ -37,29 +37,37 @@ class NetworkService {
   }
 
   Future<Map?> initialize(StatsigUser user) async {
-    var url = Uri.parse(_host + '/initialize');
-    return await _post(
-            url,
-            {
-              "user": user.toJsonWithPrivateAttributes(),
-              "statsigMetadata": StatsigMetadata.toJson()
-            },
-            3,
-            initialBackoffSeconds)
-        .timeout(Duration(seconds: _options.initTimeout), onTimeout: () {
-      print("[Statsig]: Initialize timed out.");
+    try {
+      var url = Uri.parse(_host + '/initialize');
+      return await _post(
+          url,
+          {
+            "user": user.toJsonWithPrivateAttributes(),
+            "statsigMetadata": StatsigMetadata.toJson()
+          },
+          3,
+          initialBackoffSeconds)
+          .timeout(Duration(seconds: _options.initTimeout), onTimeout: () {
+        print("[Statsig]: Initialize timed out.");
+        return null;
+      });
+    } catch (e) {
       return null;
-    });
+    }
   }
 
   Future<bool> sendEvents(List<StatsigEvent> events) async {
-    var url = Uri.parse(_host + '/rgstr');
-    var result = await _post(
-        url,
-        {'events': events, 'statsigMetadata': StatsigMetadata.toJson()},
-        2,
-        initialBackoffSeconds);
-    return result?['success'] ?? false;
+    try {
+      var url = Uri.parse(_host + '/rgstr');
+      var result = await _post(
+          url,
+          {'events': events, 'statsigMetadata': StatsigMetadata.toJson()},
+          2,
+          initialBackoffSeconds);
+      return result?['success'] ?? false;
+    } catch (e) {
+      return false;
+    }
   }
 
   Future<Map?> _post(Uri url,

@@ -1,7 +1,8 @@
+import 'package:statsig/src/common/service_locator.dart';
+import 'package:statsig/src/disk_storage/hive_store.dart';
 import 'package:uuid/uuid.dart';
-import 'disk_util.dart';
 
-abstract class StatsigMetadata {
+class StatsigMetadata {
   static String getSDKVersion() {
     return "0.4.0";
   }
@@ -28,18 +29,18 @@ abstract class StatsigMetadata {
   }
 
   static Future loadStableID([String? overrideStableID]) async {
-    const stableIdFilename = "statsig_stable_id";
+    var diskStore = serviceLocator.get<HiveStore>();
 
     if (overrideStableID != null && overrideStableID.isNotEmpty) {
       _stableId = overrideStableID;
-      DiskUtil.write(stableIdFilename, overrideStableID);
+      diskStore.saveStableID(overrideStableID);
       return;
     }
 
-    _stableId = await DiskUtil.read(stableIdFilename);
+    _stableId = diskStore.getStableID() ?? "";
     if (_stableId.isEmpty) {
       var id = Uuid().v4();
-      await DiskUtil.write(stableIdFilename, id);
+      diskStore.saveStableID(id);
       _stableId = id;
     }
   }

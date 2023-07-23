@@ -21,8 +21,8 @@ class StatsigEvent {
         doubleValue = json["value"] is String ? null : json["value"],
         stringValue = json["value"] is String ? json["value"] : null;
 
-  Map toJson() {
-    var result = {"eventName": eventName, "user": user, "time": time};
+  Map<String, dynamic> toJson() {
+    var result = {"eventName": eventName, "user": user.toJson(), "time": time};
 
     if (exposures != null) {
       result["secondaryExposures"] = exposures ?? [];

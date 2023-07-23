@@ -1,6 +1,5 @@
 @Timeout(Duration(seconds: 1))
 import 'package:nock/nock.dart';
-import 'package:statsig/src/disk_util.dart';
 import 'package:statsig/statsig.dart';
 import 'package:test/test.dart';
 

@@ -1,6 +1,7 @@
 import 'dart:convert';
 
-import 'disk_util.dart';
+import 'package:statsig/src/common/service_locator.dart';
+import 'package:statsig/src/disk_storage/hive_store.dart';
 import 'statsig_user.dart';
 
 class InternalStore {
@@ -8,9 +9,15 @@ class InternalStore {
   Map dynamicConfigs = {};
   Map layerConfigs = {};
 
+  late final HiveStore diskStore;
+
+  InternalStore() {
+    diskStore = serviceLocator.get<HiveStore>();
+  }
+
   Future<void> load(StatsigUser user) async {
-    var store = await _read(user);
-    save(user, store);
+    var store = _read(user);
+    await save(user, store);
   }
 
   Future<void> save(StatsigUser user, Map? response) async {
@@ -34,15 +41,13 @@ class InternalStore {
   }
 
   Future<void> _write(StatsigUser user, String content) async {
-    var userId = user.userId.isNotEmpty ? user.userId : "STATSIG_NULL_USER";
-    await DiskUtil.write("$userId.statsig_store", content);
+    await diskStore.saveConfig(userId: user.userId, config: content);
   }
 
-  Future<Map?> _read(StatsigUser user) async {
+  Map? _read(StatsigUser user) {
     try {
-      var userId = user.userId.isNotEmpty ? user.userId : "STATSIG_NULL_USER";
-      var content = await DiskUtil.read("$userId.statsig_store");
-      var data = json.decode(content);
+      String? content = diskStore.getConfig(userId: user.userId);
+      var data = json.decode(content ?? '');
       return data is Map ? data : null;
     } catch (_) {}
     return null;

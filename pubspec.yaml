@@ -11,6 +11,9 @@ dependencies:
   http: ^0.13.4
   meta: ^1.7.0
   uuid: ^3.0.6
+  simple_logger: 1.9.0
+  hive: 2.2.3
+  get_it: ^7.6.0
 
 dev_dependencies:
   lints: ^1.0.0

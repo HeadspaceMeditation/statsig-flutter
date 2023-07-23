@@ -1,6 +1,7 @@
 import 'dart:convert';
 import "package:crypto/crypto.dart";
 import 'package:meta/meta.dart';
+import 'package:statsig/src/disk_storage/hive_store.dart';
 
 import 'internal_store.dart';
 import 'network_service.dart';
@@ -42,6 +43,7 @@ class StatsigClient {
 
   static Future<StatsigClient> make(String sdkKey,
       [StatsigUser? user, StatsigOptions? options]) async {
+    await HiveStore.init();
     await StatsigMetadata.loadStableID(options?.overrideStableID);
 
     var client = StatsigClient._make(sdkKey, user?.normalize(options), options);
@@ -133,20 +135,11 @@ class StatsigClient {
   }
 
   Future<void> _fetchInitialValues() async {
-    var res = await _network.initialize(_user);
-    if (res is Map) {
-      _store.save(_user, res);
-    } else {
-      await _store.load(_user);
-    }
-  }
+    await _store.load(_user);
 
-  Future<void> log() async {
     var res = await _network.initialize(_user);
     if (res is Map) {
-      _store.save(_user, res);
-    } else {
-      await _store.load(_user);
+      await _store.save(_user, res);
     }
   }
 
