@@ -51,6 +51,16 @@ class StatsigClient {
     return client;
   }
 
+  static Future<StatsigClient> make4Testing(String sdkKey,
+      {StatsigUser? user, StatsigOptions? options}) async {
+    HiveStore.initStubbed();
+    await StatsigMetadata.loadStableID(options?.overrideStableID);
+
+    var client = StatsigClient._make(sdkKey, user?.normalize(options), options);
+    await client._fetchInitialValues();
+    return client;
+  }
+
   Future<void> shutdown() async {
     await _logger.shutdown();
   }

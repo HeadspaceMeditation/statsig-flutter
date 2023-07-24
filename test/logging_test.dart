@@ -4,12 +4,16 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:nock/nock.dart';
+import 'package:statsig/src/common/service_locator.dart';
+import 'package:statsig/src/statsig_client.dart';
 import 'package:statsig/statsig.dart';
 import 'package:test/test.dart';
 
 import 'test_data.dart';
 
 void main() {
+  StatsigClient? client;
+
   setUpAll(() {
     nock.init();
   });
@@ -17,6 +21,11 @@ void main() {
   setUp(() {
     Statsig.reset();
     nock.cleanAll();
+  });
+
+  tearDown(() {
+    client = null;
+    serviceLocator.reset();
   });
 
   group('Statsig when Initialized', () {
@@ -28,10 +37,11 @@ void main() {
       final interceptor = nock('https://statsigapi.net')
           .post('/v1/initialize', (body) => true)
         ..reply(200, TestData.initializeResponse);
-      await Statsig.initialize(
+
+      client = await StatsigClient.make4Testing(
           'a-key',
-          StatsigUser(userId: "a-user", privateAttributes: {"secret": "shh"}),
-          StatsigOptions(environment: StatsigEnvironment.staging));
+          user: StatsigUser(userId: "a-user", privateAttributes: {"secret": "shh"}),
+          options: StatsigOptions(environment: StatsigEnvironment.staging));
 
       expect(interceptor.isDone, true);
 
@@ -47,8 +57,8 @@ void main() {
 
     group("User Object", () {
       setUp(() async {
-        Statsig.checkGate('a_gate');
-        Statsig.shutdown();
+        client?.checkGate('a_gate');
+        client?.shutdown();
         await completer?.future;
 
         expect(loggingStub?.isDone, true);
@@ -72,14 +82,14 @@ void main() {
 
     group("Feature Gates", () {
       test('does not log gates that do not exist', () async {
-        Statsig.checkGate('not_a_gate');
-        Statsig.shutdown();
+        client?.checkGate('not_a_gate');
+        client?.shutdown();
         expect(logs, null);
       });
 
       test('logs gate exposures', () async {
-        Statsig.checkGate('a_gate');
-        Statsig.shutdown();
+        client?.checkGate('a_gate');
+        client?.shutdown();
         await completer?.future;
 
         expect(loggingStub?.isDone, true);
@@ -94,14 +104,14 @@ void main() {
 
     group("Dynamic Configs", () {
       test('does not log configs that do not exist', () async {
-        Statsig.checkGate('not_a_config');
-        Statsig.shutdown();
+        client?.checkGate('not_a_config');
+        client?.shutdown();
         expect(logs, null);
       });
 
       test('logs config exposures', () async {
-        Statsig.getConfig('a_config');
-        Statsig.shutdown();
+        client?.getConfig('a_config');
+        client?.shutdown();
         await completer?.future;
 
         expect(loggingStub?.isDone, true);

@@ -1,6 +1,8 @@
 import 'dart:convert';
 
 import 'package:nock/nock.dart';
+import 'package:statsig/src/common/service_locator.dart';
+import 'package:statsig/src/disk_storage/hive_store.dart';
 import 'package:statsig/src/network_service.dart';
 import 'package:statsig/src/statsig_metadata.dart';
 import 'package:statsig/statsig.dart';
@@ -15,8 +17,15 @@ void main() {
 
   setUp(() async {
     nock.cleanAll();
+    await HiveStore.initStubbed();
+
     await StatsigMetadata.loadStableID();
     networkService = NetworkService(StatsigOptions(), "client-key");
+  });
+
+
+  tearDown(() {
+    serviceLocator.reset();
   });
 
   group('Network Service', () {

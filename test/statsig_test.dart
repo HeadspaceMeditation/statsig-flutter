@@ -1,10 +1,14 @@
 import 'package:nock/nock.dart';
+import 'package:statsig/src/common/service_locator.dart';
+import 'package:statsig/src/statsig_client.dart';
 import 'package:statsig/statsig.dart';
 import 'package:test/test.dart';
 
 import 'test_data.dart';
 
 void main() {
+  StatsigClient? client;
+
   setUpAll(() {
     nock.init();
   });
@@ -14,31 +18,37 @@ void main() {
     nock.cleanAll();
   });
 
+  tearDown(() {
+    client = null;
+    serviceLocator.reset();
+  });
+
   group('Statsig when Initialized', () {
     setUp(() async {
       final interceptor = nock('https://statsigapi.net')
           .post('/v1/initialize', (body) => true)
         ..reply(200, TestData.initializeResponse);
-      await Statsig.initialize('a-key');
+
+      client = await StatsigClient.make4Testing('a-key');
 
       expect(interceptor.isDone, true);
     });
 
     group('Feature Gates', () {
       test('returns gate value from network', () {
-        expect(Statsig.checkGate('a_gate'), true);
+        expect(client?.checkGate('a_gate'), true);
       });
       test('returns false by default', () {
-        expect(Statsig.checkGate('no_gate'), false);
+        expect(client?.checkGate('no_gate'), false);
       });
       test('returns default value for gate', () {
-        expect(Statsig.checkGate('no_gate', true), true);
+        expect(client?.checkGate('no_gate', true), true);
       });
     });
 
     group('Configs', () {
       test('returns config from network', () {
-        var config = Statsig.getConfig("a_config");
+        var config = client!.getConfig("a_config");
 
         expect(config.name, "a_config");
         expect(config.get("a_string_value"), "foo");
@@ -47,25 +57,27 @@ void main() {
       });
 
       test('returns and empty config by default', () {
-        var config = Statsig.getConfig("no_config");
+        var config = client!.getConfig("no_config");
         expect(config.name, "no_config");
         expect(config.get("a_string_value"), null);
       });
 
       test('returns default values', () {
-        var config = Statsig.getConfig("no_config");
+        var config = client!.getConfig("no_config");
         expect(config.name, "no_config");
         expect(config.get("a_string_value", "bar"), "bar");
         expect(config.get("a_bool_value", true), true);
         expect(config.get("a_number_value", 7), 7);
       });
     });
-  });
 
-  group('Statsig when Uninitialized', () {
-    test('returns default gate value', () {
-      expect(Statsig.checkGate('a_gate', true), true);
-      expect(Statsig.checkGate('a_gate'), false);
+    group('Statsig when Uninitialized', () {
+      test('returns default gate value', () {
+        expect(client!.checkGate('unknown_gate', true), true);
+        expect(client!.checkGate('unknown_gate', false), false);
+      });
     });
   });
+
+
 }

@@ -26,7 +26,7 @@ class StatsigLogger {
 
   StatsigLogger(this._network) {
     _diskStore = serviceLocator.get<HiveStore>();
-    _flushFailedLogs();
+    _flushUnsyncedEvents();
     _initFlushTimer();
   }
 
@@ -99,7 +99,7 @@ class StatsigLogger {
         'Queue count: ${_queue.length}, New Flush batch size: $_flushBatchSize');
   }
 
-  Future<void> _flushFailedLogs() async {
+  Future<void> _flushUnsyncedEvents() async {
     try {
       var events = _diskStore.loadEvents();
       log.info('[Statsig] Attempting to flush past events 💡, '

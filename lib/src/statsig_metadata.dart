@@ -33,14 +33,14 @@ class StatsigMetadata {
 
     if (overrideStableID != null && overrideStableID.isNotEmpty) {
       _stableId = overrideStableID;
-      diskStore.saveStableID(overrideStableID);
+      await diskStore.saveStableID(overrideStableID);
       return;
     }
 
     _stableId = diskStore.getStableID() ?? "";
     if (_stableId.isEmpty) {
       var id = Uuid().v4();
-      diskStore.saveStableID(id);
+      await diskStore.saveStableID(id);
       _stableId = id;
     }
   }

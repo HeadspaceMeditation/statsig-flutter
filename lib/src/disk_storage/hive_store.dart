@@ -31,7 +31,23 @@ class HiveStore {
 
     var _eventBox = await Hive.openBox<String>('events');
     var _userBox = await Hive.openBox<String>('user');
-    var _configBox = await Hive.openBox<String>('ids');
+    var _configBox = await Hive.openBox<String>('config');
+
+    var store = HiveStore(
+      eventBox: _eventBox,
+      userBox: _userBox,
+      configBox: _configBox,
+    );
+    serviceLocator.registerSingleton<HiveStore>(store);
+
+    return store;
+  }
+
+  /// Only for testing purposes
+  static Future<HiveStore> initStubbed() async {
+    var _eventBox = StubbedBox<String>("events");
+    var _userBox = StubbedBox<String>("user");
+    var _configBox = StubbedBox<String>("config");
 
     var store = HiveStore(
       eventBox: _eventBox,
@@ -115,6 +131,167 @@ class HiveStore {
 
   Future<int> clearSyncedEvents() async {
     return eventBox.clear();
+  }
+
+}
+
+class StubbedBox<T> extends Box<T> {
+  Map<dynamic, T> store = {};
+
+  @override
+  final String name;
+
+  StubbedBox(this.name);
+
+  @override
+  Future<int> add(T value) async {
+    int length = store.length;
+    if (length == 0) {
+      store['0'] = value;
+    } else {
+      store['$length'] = value;
+    }
+
+    return Future.value(length);
+  }
+
+  @override
+  Future<Iterable<int>> addAll(Iterable<T> values) async {
+    List<int> addedIndexes = [];
+    for (T value in values) {
+      int index = await add(value);
+      addedIndexes.add(index);
+    }
+
+    return Future.value(addedIndexes);
+  }
+
+  @override
+  Future<int> clear() async {
+    int count = store.length;
+    store.clear();
+    return Future.value(count);
+  }
+
+  @override
+  Future<void> close() {
+    return Future.value();
+  }
+
+  @override
+  Future<void> compact() {
+    return Future.value();
+  }
+
+  @override
+  bool containsKey(key) {
+    return store.containsKey(key);
+  }
+
+  @override
+  Future<void> delete(key) {
+    store.remove(key);
+    return Future.value();
+  }
+
+  @override
+  Future<void> deleteAll(Iterable keys) {
+    store.removeWhere((key, value) => keys.contains(key));
+    return Future.value();
+  }
+
+  @override
+  Future<void> deleteAt(int index) {
+    return Future.value();
+  }
+
+  @override
+  Future<void> deleteFromDisk() {
+    return Future.value();
+  }
+
+  @override
+  Future<void> flush() {
+    return Future.value();
+  }
+
+  @override
+  T? get(key, {T? defaultValue}) {
+    T? value = store[key] ?? defaultValue;
+    return value;
+  }
+
+  @override
+  T? getAt(int index) {
+    return null;
+  }
+
+  @override
+  bool get isEmpty => store.isEmpty;
+
+  @override
+  bool get isNotEmpty => store.isNotEmpty;
+
+  @override
+  bool get isOpen => true;
+
+  @override
+  keyAt(int index) {
+    // TODO: implement keyAt
+    throw UnimplementedError();
+  }
+
+  @override
+  Iterable get keys => store.keys;
+
+  @override
+  bool get lazy => throw UnimplementedError();
+
+  @override
+  int get length => store.length;
+
+  @override
+  // TODO: implement path
+  String? get path => throw UnimplementedError();
+
+  @override
+  Future<void> put(key, T value) {
+    store[key] = value;
+    return Future.value();
+  }
+
+  @override
+  Future<void> putAll(Map<dynamic, T> entries) {
+    // TODO: implement putAll
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> putAt(int index, T value) {
+    // TODO: implement putAt
+    throw UnimplementedError();
+  }
+
+  @override
+  Map<dynamic, T> toMap() {
+    // TODO: implement toMap
+    throw UnimplementedError();
+  }
+
+  @override
+  // TODO: implement values
+  Iterable<T> get values => store.values;
+
+  @override
+  Iterable<T> valuesBetween({startKey, endKey}) {
+    // TODO: implement valuesBetween
+    throw UnimplementedError();
+  }
+
+  @override
+  Stream<BoxEvent> watch({key}) {
+    // TODO: implement watch
+    throw UnimplementedError();
   }
 
 }

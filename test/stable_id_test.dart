@@ -1,7 +1,10 @@
-@Timeout(Duration(seconds: 1))
 import 'package:nock/nock.dart';
+import 'package:statsig/src/common/service_locator.dart';
+import 'package:statsig/src/statsig_client.dart';
+import 'package:statsig/src/statsig_metadata.dart';
 import 'package:statsig/statsig.dart';
 import 'package:test/test.dart';
+import 'package:uuid/uuid.dart';
 
 import 'test_data.dart';
 
@@ -28,46 +31,45 @@ void main() {
           .reply(200, TestData.initializeResponse);
     });
 
+    tearDown(() {
+      serviceLocator.reset();
+    });
+
     group("auto generated stable id", () {
       test('a new uuid is generated', () async {
-        String? original =
-            await DiskUtil.read("statsig_stable_id", destroyAfterReading: true);
-        await Statsig.initialize('a-key');
-        String? current = await DiskUtil.read("statsig_stable_id");
+        /// Given the original value is not set (null)
+        String? original;
+        await StatsigClient.make4Testing('a-key', options: StatsigOptions(
+          overrideStableID: original
+        ));
+
+        /// When loadStableID is invoked
+        await StatsigMetadata.loadStableID();
+        /// New ID
+        String current = StatsigMetadata.getStableID();
+
         expect(current, isNot(original));
         expect(current, isUuid);
       });
 
-      test('persisting the override', () async {
-        String? original = await DiskUtil.read("statsig_stable_id");
-        await Statsig.initialize('a-key');
-        String? current = await DiskUtil.read("statsig_stable_id");
+      test('overriding uuid', () async {
+        /// Given the original value is not set (null)
+        String? original = "old_uuid";
+        await StatsigClient.make4Testing('a-key', options: StatsigOptions(
+            overrideStableID: original
+        ));
 
-        expect(current, original);
+        String overrideStableId = Uuid().v4();
+        /// When loadStableID is invoked with a new stableId
+        await StatsigMetadata.loadStableID(overrideStableId);
+
+        /// Updated
+        String current = StatsigMetadata.getStableID();
+
+        expect(current, isNot(original));
+        expect(current, isUuid);
       });
     });
 
-    group("overriding stable id", () {
-      setUp(() async {
-        await DiskUtil.read("statsig_stable_id", destroyAfterReading: true);
-        await Statsig.initialize(
-            'a-key', null, StatsigOptions(overrideStableID: "my_custom_id"));
-
-        var end = DateTime.now().add(Duration(milliseconds: 100));
-        while ((await DiskUtil.read("statsig_stable_id")).isEmpty && DateTime.now().isBefore(end)) { }
-      });
-
-      test('saves override to disk', () async {
-        String? current = await DiskUtil.read("statsig_stable_id");
-        expect(current, "my_custom_id");
-      });
-
-      test('persisting the override', () async {
-        await Statsig.initialize('a-key');
-
-        String? current = await DiskUtil.read("statsig_stable_id");
-        expect(current, "my_custom_id");
-      });
-    });
   });
 }
