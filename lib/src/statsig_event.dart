@@ -77,7 +77,7 @@ class StatsigEvent {
   }
 
   static StatsigEvent createCustomEvent(StatsigUser user, String eventName,
-      String? stringValue, double? doubleValue, Map<String, String>? metadata) {
+      String? stringValue, double? doubleValue, Map<String, dynamic>? metadata) {
     return StatsigEvent._make(user, eventName,
         stringValue: stringValue, doubleValue: doubleValue, metadata: metadata);
   }

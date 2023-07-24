@@ -138,7 +138,7 @@ class StatsigClient {
   void logEvent(String eventName,
       {String? stringValue,
       double? doubleValue,
-      Map<String, String>? metadata}) {
+      Map<String, dynamic>? metadata}) {
     _logger.enqueue(StatsigEvent.createCustomEvent(
         _user, eventName, stringValue, doubleValue, metadata));
     return;

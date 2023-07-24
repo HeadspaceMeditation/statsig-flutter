@@ -61,7 +61,7 @@ class Statsig {
   static void logEvent(String eventName,
       {String? stringValue,
       double? doubleValue,
-      Map<String, String>? metadata}) {
+      Map<String, dynamic>? metadata}) {
     return _clientInstance?.logEvent(eventName,
         stringValue: stringValue, doubleValue: doubleValue, metadata: metadata);
   }
